@@ -91,12 +91,16 @@ export default {
                     }
                 }
 
-                const 是内部Check请求 = 区分大小写访问路径 === 'api/check' && 验证内部CheckTOKEN();
-                if (!是内部Check请求 && !验证管理员Cookie()) return new Response(null, { status: 302, headers: { 'Location': '/' } });
-                if (区分大小写访问路径 === 'api/check' && request.method !== 'GET' && request.method !== 'POST') {
+                const 是Check请求 = 区分大小写访问路径 === 'api/check';
+                const 是内部Check请求 = 是Check请求 && 验证内部CheckTOKEN();
+                if (是Check请求 && request.method !== 'GET' && request.method !== 'POST') {
                     return new Response(JSON.stringify({ success: false, msg: 'Method Not Allowed' }), { status: 405, headers: { 'Content-Type': 'application/json;charset=UTF-8' } });
                 }
-                if (区分大小写访问路径 !== 'api/check' && request.method !== 'POST') {
+                if (是Check请求 && request.method === 'GET' && !是内部Check请求) {
+                    return new Response(JSON.stringify({ success: false, msg: 'GET /api/check 仅供内部汇总调用，请在管理面板中使用 POST 检查账号' }), { status: 403, headers: { 'Content-Type': 'application/json;charset=UTF-8' } });
+                }
+                if ((!是Check请求 || request.method === 'POST') && !验证管理员Cookie()) return new Response(null, { status: 302, headers: { 'Location': '/' } });
+                if (!是Check请求 && request.method !== 'POST') {
                     return new Response(JSON.stringify({ success: false, msg: 'Method Not Allowed' }), { status: 405, headers: { 'Content-Type': 'application/json;charset=UTF-8' } });
                 }
 
@@ -230,6 +234,8 @@ export default {
                                 thresholdMs: 获取单账号查询间隔毫秒(env)
                             });
                             Usage_JSON = checkResult.usage;
+                        } else if (request.method === 'GET') {
+                            return new Response(JSON.stringify({ success: false, msg: 'GET /api/check 缺少账号 id' }), { status: 400, headers: { 'Content-Type': 'application/json;charset=utf-8' } });
                         } else {
                             Usage_JSON = await getCloudflareUsage(url.searchParams.get('Email'), url.searchParams.get('GlobalAPIKey'), url.searchParams.get('AccountID'), url.searchParams.get('APIToken'));
                         }
@@ -460,13 +466,13 @@ function 获取单账号查询间隔毫秒(env = {}) {
 
 function 获取每次最多刷新账号数(env = {}) {
     const configured = Number(env.MAX_ACCOUNT_REFRESH_PER_RUN || env.max_account_refresh_per_run);
-    if (Number.isFinite(configured) && configured > 0) return Math.min(Math.floor(configured), 默认每次最多刷新账号数);
+    if (Number.isFinite(configured) && configured > 0) return Math.min(Math.max(1, Math.floor(configured)), 默认每次最多刷新账号数);
     return 默认每次最多刷新账号数;
 }
 
 function 获取直接查询最多账号数(env = {}) {
     const configured = Number(env.DIRECT_ACCOUNT_REFRESH_PER_RUN || env.direct_account_refresh_per_run);
-    if (Number.isFinite(configured) && configured > 0) return Math.min(Math.floor(configured), 默认直接查询最多账号数);
+    if (Number.isFinite(configured) && configured > 0) return Math.min(Math.max(1, Math.floor(configured)), 默认直接查询最多账号数);
     return 默认直接查询最多账号数;
 }
 
@@ -480,7 +486,17 @@ function 写入账号查询结果(account, usage, queryTime = Date.now()) {
     account.Usage = normalized;
     account.UpdateTime = queryTime;
     account.LastCheckTime = queryTime;
+    delete account.LastCheckError;
+    delete account.LastCheckErrorTime;
     return normalized;
+}
+
+function 写入账号查询失败(account, error, queryTime = Date.now()) {
+    account.LastCheckTime = queryTime;
+    account.LastCheckErrorTime = queryTime;
+    account.LastCheckError = typeof error === 'string' ? error : (error?.msg || error?.message || '查询失败');
+    account.Usage = 补全Usage结构(account.Usage || {});
+    return account.Usage;
 }
 
 async function 创建内部CheckTOKEN(管理员TOKEN, hostname) {
@@ -544,6 +560,12 @@ async function 查询并更新单账号(env, accountId, options = {}) {
     }
 
     const usage = await getCloudflareUsage(account.Email, account.GlobalAPIKey, account.AccountID, account.APIToken);
+    if (!usage.success) {
+        写入账号查询失败(account, usage, Date.now());
+        if (save) await env.KV.put('usage_config.json', JSON.stringify(usage_config_json));
+        return { usage, account, updated: false, fromCache: false, failed: true };
+    }
+
     const normalized = 写入账号查询结果(account, usage, Date.now());
     if (save) await env.KV.put('usage_config.json', JSON.stringify(usage_config_json));
     return { usage: normalized, account, updated: true, fromCache: false };
@@ -610,12 +632,17 @@ async function 更新请求数(env, options = {}) {
                 const usage = 使用内部接口
                     ? await 通过内部接口查询账号(selfUrl, internalToken, account.ID)
                     : await getCloudflareUsage(account.Email, account.GlobalAPIKey, account.AccountID, account.APIToken);
+                if (!usage.success) {
+                    写入账号查询失败(account, usage, Date.now());
+                    failedRefreshCount += 1;
+                    return;
+                }
                 写入账号查询结果(account, usage, Date.now());
                 refreshedCount += 1;
             } catch (error) {
                 failedRefreshCount += 1;
                 console.error(`账号 ${account.ID} 查询失败:`, error.message);
-                account.Usage = 补全Usage结构(account.Usage || {});
+                写入账号查询失败(account, error, Date.now());
             }
         }));
 
@@ -657,7 +684,9 @@ async function 更新请求数(env, options = {}) {
             thresholdMs,
             selfFetch: 使用内部接口
         };
-        usage_json.msg = `✅ 成功更新免费额度使用数据（本次刷新 ${refreshedCount} 个账号，${usage_json.RefreshStats.cached} 个使用历史数据）`;
+        usage_json.msg = failedRefreshCount > 0
+            ? `⚠️ 部分账号查询失败（本次刷新 ${refreshedCount} 个账号，失败 ${failedRefreshCount} 个，${usage_json.RefreshStats.cached} 个使用历史数据）`
+            : `✅ 成功更新免费额度使用数据（本次刷新 ${refreshedCount} 个账号，${usage_json.RefreshStats.cached} 个使用历史数据）`;
         await env.KV.put('usage.json', JSON.stringify(usage_json));
     } else {
         // 配置文件存在但为空数组或无效格式
