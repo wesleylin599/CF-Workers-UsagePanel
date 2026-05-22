@@ -1076,13 +1076,14 @@ async function UsagePanel管理面板(TOKEN) {
         .quota-details { margin-top: 1.25rem; overflow: hidden; }
         .quota-details[open] { display: flex; flex-direction: column; }
         .quota-details.quota-animating .quota-summary { pointer-events: none; }
-        .quota-summary { list-style: none; background: var(--item-bg); border: 1px solid var(--stroke); border-radius: 14px; padding: 0.85rem 1rem; cursor: pointer; display: flex; justify-content: space-between; gap: 1rem; align-items: center; color: var(--text-main); font-size: 0.85rem; font-weight: 600; transition: all 0.3s ease; }
+        .quota-summary { list-style: none; background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(14, 165, 233, 0.1)); border: 1px solid rgba(99, 102, 241, 0.5); border-radius: 14px; padding: 0.8rem 0.85rem; cursor: pointer; display: flex; justify-content: space-between; gap: 0.75rem; align-items: center; color: var(--text-main); font-size: 0.85rem; font-weight: 700; box-shadow: 0 12px 28px -18px var(--primary-glow), inset 0 1px 0 rgba(255,255,255,0.08); transition: all 0.3s ease; }
         .quota-summary::-webkit-details-marker { display: none; }
-        .quota-summary:hover { border-color: var(--primary); background: rgba(99, 102, 241, 0.08); }
-        .quota-summary::after { content: '展开'; color: var(--text-muted); font-size: 0.75rem; font-weight: 500; }
-        .quota-details[open] .quota-summary::after { content: '收起'; }
+        .quota-summary:hover, .quota-summary:focus-visible { border-color: var(--primary); background: linear-gradient(135deg, rgba(99, 102, 241, 0.24), rgba(14, 165, 233, 0.14)); box-shadow: 0 16px 32px -18px var(--primary-glow), 0 0 0 3px rgba(99, 102, 241, 0.12); outline: none; }
+        .quota-summary-title { min-width: 0; }
+        .quota-summary::after { content: '展开细节'; color: #fff; background: var(--primary); border-radius: 999px; padding: 0.38rem 0.7rem; font-size: 0.75rem; font-weight: 700; white-space: nowrap; box-shadow: 0 10px 20px -12px var(--primary-glow); }
+        .quota-details[open] .quota-summary::after { content: '收起细节'; }
         .quota-details[open] .quota-summary { order: 2; margin-top: 0.875rem; }
-        .quota-summary-meta { color: var(--text-muted); font-size: 0.75rem; font-weight: 500; }
+        .quota-summary-meta { color: var(--text-muted); font-size: 0.75rem; font-weight: 600; margin-left: auto; white-space: nowrap; }
         .quota-body { overflow: hidden; }
         .quota-details[open] .quota-body { order: 1; }
         .quota-details.quota-animating .quota-body { will-change: height, opacity, transform; }
@@ -1431,6 +1432,10 @@ async function UsagePanel管理面板(TOKEN) {
                 gap: 0.35rem;
             }
 
+            .quota-summary-meta {
+                margin-left: 0;
+            }
+
             .quota-group-meta {
                 text-align: left;
             }
@@ -1712,7 +1717,7 @@ async function UsagePanel管理面板(TOKEN) {
             const kv = resources.kv || {};
             const r2 = resources.r2 || {};
             return '<details class="quota-details">' +
-                '<summary class="quota-summary"><span>资源额度细节</span><span class="quota-summary-meta">KV / D1 / R2</span></summary>' +
+                '<summary class="quota-summary"><span class="quota-summary-title">资源额度细节</span><span class="quota-summary-meta">KV / D1 / R2</span></summary>' +
                 '<div class="quota-body"><div class="quota-list">' +
                     renderQuotaGroup('KV', formatNumber(kv.namespaces || 0) + ' 个命名空间', [
                         renderQuotaBar('读取（今日）', kv.reads, kv.readsLimit),
@@ -2285,13 +2290,14 @@ async function UsagePanel主页(TOKEN) {
         .quota-details { margin-top: 1.25rem; overflow: hidden; }
         .quota-details[open] { display: flex; flex-direction: column; }
         .quota-details.quota-animating .quota-summary { pointer-events: none; }
-        .quota-summary { list-style: none; background: var(--item-bg); border: 1px solid var(--stroke); border-radius: 14px; padding: 0.85rem 1rem; cursor: pointer; display: flex; justify-content: space-between; gap: 1rem; align-items: center; color: var(--text-main); font-size: 0.85rem; font-weight: 600; transition: all 0.3s ease; }
+        .quota-summary { list-style: none; background: linear-gradient(135deg, rgba(99, 102, 241, 0.16), rgba(14, 165, 233, 0.1)); border: 1px solid rgba(99, 102, 241, 0.5); border-radius: 14px; padding: 0.8rem 0.85rem; cursor: pointer; display: flex; justify-content: space-between; gap: 0.75rem; align-items: center; color: var(--text-main); font-size: 0.85rem; font-weight: 700; box-shadow: 0 12px 28px -18px var(--primary-glow), inset 0 1px 0 rgba(255,255,255,0.08); transition: all 0.3s ease; }
         .quota-summary::-webkit-details-marker { display: none; }
-        .quota-summary:hover { border-color: var(--primary); background: rgba(99, 102, 241, 0.08); }
-        .quota-summary::after { content: '展开'; color: var(--text-muted); font-size: 0.75rem; font-weight: 500; }
-        .quota-details[open] .quota-summary::after { content: '收起'; }
+        .quota-summary:hover, .quota-summary:focus-visible { border-color: var(--primary); background: linear-gradient(135deg, rgba(99, 102, 241, 0.24), rgba(14, 165, 233, 0.14)); box-shadow: 0 16px 32px -18px var(--primary-glow), 0 0 0 3px rgba(99, 102, 241, 0.12); outline: none; }
+        .quota-summary-title { min-width: 0; }
+        .quota-summary::after { content: '展开细节'; color: #fff; background: var(--primary); border-radius: 999px; padding: 0.38rem 0.7rem; font-size: 0.75rem; font-weight: 700; white-space: nowrap; box-shadow: 0 10px 20px -12px var(--primary-glow); }
+        .quota-details[open] .quota-summary::after { content: '收起细节'; }
         .quota-details[open] .quota-summary { order: 2; margin-top: 0.875rem; }
-        .quota-summary-meta { color: var(--text-muted); font-size: 0.75rem; font-weight: 500; }
+        .quota-summary-meta { color: var(--text-muted); font-size: 0.75rem; font-weight: 600; margin-left: auto; white-space: nowrap; }
         .quota-body { overflow: hidden; }
         .quota-details[open] .quota-body { order: 1; }
         .quota-details.quota-animating .quota-body { will-change: height, opacity, transform; }
@@ -2711,6 +2717,10 @@ async function UsagePanel主页(TOKEN) {
                 align-items: flex-start;
                 flex-direction: column;
                 gap: 0.35rem;
+            }
+
+            .quota-summary-meta {
+                margin-left: 0;
             }
 
             .quota-group-meta {
@@ -3183,7 +3193,7 @@ async function UsagePanel主页(TOKEN) {
             const kv = resources.kv || {};
             const r2 = resources.r2 || {};
             return '<details class="quota-details">' +
-                '<summary class="quota-summary"><span>资源额度细节</span><span class="quota-summary-meta">KV / D1 / R2</span></summary>' +
+                '<summary class="quota-summary"><span class="quota-summary-title">资源额度细节</span><span class="quota-summary-meta">KV / D1 / R2</span></summary>' +
                 '<div class="quota-body"><div class="quota-list">' +
                     renderQuotaGroup('KV', formatNumber(kv.namespaces || 0) + ' 个命名空间', [
                         renderQuotaBar('读取（今日）', kv.reads, kv.readsLimit),
